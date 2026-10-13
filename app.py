@@ -306,11 +306,11 @@ def handle_message(event):
         "record_id": ""
     })
 
-    if result.get("success"):
+        if result.get("success"):
 
         amount = info["amount"]
 
-                if amount != "":
+        if amount != "":
             amount_display = f"{amount:,.2f}"
 
             shop_display = ""
