@@ -393,7 +393,7 @@ def handle_image(event):
             "line_group_id": group_id,
         })
 
-                if result.get("success"):
+        if result.get("success"):
             file_url = result.get("file_url", "")
             ocr_text = result.get("ocr_text", "")
 
@@ -403,7 +403,6 @@ def handle_image(event):
             )
             amount = amount_match.group(1) if amount_match else ""
 
-            # เก็บไว้รอข้อความรายการถัดไป
             pending_receipts[group_id] = {
                 "file_url": file_url,
                 "record_id": event.message.id,
@@ -432,13 +431,14 @@ def handle_image(event):
                 f"⚠️ บันทึก Google Drive ไม่สำเร็จครับ\n\n"
                 f"ERROR: {error_detail}",
             )
-        except Exception as e:
-            print("Image error:", str(e))
-    
-            reply_line(
-                event,
-                "⚠️ รับรูปแล้ว แต่เกิดข้อผิดพลาดระหว่างจัดเก็บครับ",
-            )
+
+    except Exception as e:
+        print("Image error:", str(e))
+
+        reply_line(
+            event,
+            "⚠️ รับรูปแล้ว แต่เกิดข้อผิดพลาดระหว่างจัดเก็บครับ",
+        )
 
 
 if __name__ == "__main__":
