@@ -12,7 +12,11 @@ from linebot.v3.messaging import (
     ReplyMessageRequest,
     TextMessage
 )
-from linebot.v3.webhooks import MessageEvent, TextMessageContent
+from linebot.v3.webhooks import (
+    MessageEvent,
+    TextMessageContent,
+    ImageMessageContent
+)
 
 app = Flask(__name__)
 
@@ -341,6 +345,28 @@ def handle_message(event):
     reply_line(event, reply_text)
 
 
+@handler.add(MessageEvent, message=ImageMessageContent)
+def handle_image(event):
+
+    user_id = getattr(event.source, "user_id", "") or ""
+    group_id = getattr(event.source, "group_id", "") or ""
+
+    # หาไซต์จากห้อง LINE อัตโนมัติ
+    site_name = get_site_name(group_id)
+
+    if group_id and not site_name:
+        reply_line(
+            event,
+            "⚠️ ห้องนี้ยังไม่ได้ลงทะเบียนไซต์ครับ"
+        )
+        return
+
+    reply_line(
+        event,
+        f"📸 รับรูปภาพเรียบร้อยครับ\n"
+        f"🏗️ ไซต์: {site_name}\n\n"
+        f"กำลังเตรียมระบบจัดเก็บรูปบิลครับ"
+    )
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
