@@ -429,13 +429,13 @@ def handle_image(event):
             )
 
         else:
-    error_detail = result.get("error", "ไม่ทราบสาเหตุ")
+            error_detail = result.get("error", "ไม่ทราบสาเหตุ")
 
-    reply_line(
-        event,
-        f"⚠️ บันทึก Google Drive ไม่สำเร็จครับ\n\n"
-        f"ERROR: {error_detail}"
-    )
+        reply_line(
+            event,
+            f"⚠️ บันทึก Google Drive ไม่สำเร็จครับ\n\n"
+            f"ERROR: {error_detail}"
+        )
 
     except Exception as e:
         print("Image error:", str(e))
