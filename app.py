@@ -396,6 +396,12 @@ def handle_image(event):
         if result.get("success"):
             file_url = result.get("file_url", "")
             ocr_text = result.get("ocr_text", "")
+            amount_match = re.search(
+    r"จำนวนเงิน\s*[\r\n]+\s*([\d,]+(?:\.\d{1,2})?)",
+    ocr_text
+)
+
+amount = amount_match.group(1) if amount_match else ""
 
             # เก็บไว้รอข้อความรายการถัดไป
             pending_receipts[group_id] = {
@@ -409,6 +415,7 @@ def handle_image(event):
     event,
     f"📸 รับรูปบิลเรียบร้อยครับ\n"
     f"🏗️ ไซต์: {site_name}\n\n"
+    f"💰 ยอดเงินที่ตรวจพบ: {amount if amount else 'ไม่พบยอดเงิน'} บาท\n\n"
     f"🔍 ข้อความที่อ่านจากบิล:\n{ocr_text}"
 )
 
