@@ -393,44 +393,45 @@ def handle_image(event):
             "line_group_id": group_id,
         })
 
-        if result.get("success"):
+                if result.get("success"):
             file_url = result.get("file_url", "")
             ocr_text = result.get("ocr_text", "")
-            amount_match = re.search(
-    r"จำนวนเงิน\s*[\r\n]+\s*([\d,]+(?:\.\d{1,2})?)",
-    ocr_text
-)
 
+            amount_match = re.search(
+                r"จำนวนเงิน\s*[\r\n]+\s*([\d,]+(?:\.\d{1,2})?)",
+                ocr_text
+            )
             amount = amount_match.group(1) if amount_match else ""
-    
-                    # เก็บไว้รอข้อความรายการถัดไป
-                    pending_receipts[group_id] = {
-                        "file_url": file_url,
-                        "record_id": event.message.id,
-                        "user_id": user_id,
-                        "site_name": site_name,
-                    }
-        
-                    reply_line(
-            event,
-            f"📸 รับรูปบิลเรียบร้อยครับ\n"
-            f"🏗️ ไซต์: {site_name}\n\n"
-            f"💰 ยอดเงินที่ตรวจพบ: {amount if amount else 'ไม่พบยอดเงิน'} บาท\n\n"
-            f"🔍 ข้อความที่อ่านจากบิล:\n{ocr_text}"
-        )
-        
-                else:
-                    error_detail = result.get(
-                        "error",
-                        "ไม่ทราบสาเหตุ",
-                    )
-        
-                    reply_line(
-                        event,
-                        f"⚠️ บันทึก Google Drive ไม่สำเร็จครับ\n\n"
-                        f"ERROR: {error_detail}",
-                    )
-    
+
+            # เก็บไว้รอข้อความรายการถัดไป
+            pending_receipts[group_id] = {
+                "file_url": file_url,
+                "record_id": event.message.id,
+                "user_id": user_id,
+                "site_name": site_name,
+                "ocr_text": ocr_text,
+                "amount": amount,
+            }
+
+            reply_line(
+                event,
+                f"📸 รับรูปบิลเรียบร้อยครับ\n"
+                f"🏗️ ไซต์: {site_name}\n\n"
+                f"💰 ยอดเงินที่ตรวจพบ: {amount if amount else 'ไม่พบยอดเงิน'} บาท\n\n"
+                f"🔍 ข้อความที่อ่านจากบิล:\n{ocr_text}"
+            )
+
+        else:
+            error_detail = result.get(
+                "error",
+                "ไม่ทราบสาเหตุ",
+            )
+
+            reply_line(
+                event,
+                f"⚠️ บันทึก Google Drive ไม่สำเร็จครับ\n\n"
+                f"ERROR: {error_detail}",
+            )
         except Exception as e:
             print("Image error:", str(e))
     
