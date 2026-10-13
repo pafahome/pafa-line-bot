@@ -1,4 +1,5 @@
 import os
+import re
 import requests
 from flask import Flask, request, abort
 
@@ -25,7 +26,7 @@ configuration = Configuration(access_token=CHANNEL_ACCESS_TOKEN)
 
 @app.route("/", methods=["GET"])
 def home():
-    return "PAFA HOME Site Bot is running!"
+    return "PAFA HOME Site Expense Bot is running!"
 
 
 @app.route("/callback", methods=["POST"])
@@ -88,6 +89,74 @@ def reply_line(event, text):
         )
 
 
+# ==========================================
+# ดึงจำนวนเงินออกจากข้อความ
+# เช่น 3005 / 3,005 / 3,005.50
+# ==========================================
+def extract_amount(text):
+    numbers = re.findall(r'\d[\d,]*(?:\.\d{1,2})?', text)
+
+    if not numbers:
+        return ""
+
+    # ใช้ตัวเลขชุดสุดท้ายในข้อความเป็นยอดเงิน
+    amount_text = numbers[-1].replace(",", "")
+
+    try:
+        return float(amount_text)
+    except ValueError:
+        return ""
+
+
+# ==========================================
+# วิเคราะห์ประเภท/หมวดจากข้อความ
+# ==========================================
+def analyze_message(text):
+
+    clean_text = text.strip()
+    amount = extract_amount(clean_text)
+
+    type_name = "ค่าใช้จ่าย"
+    category = "อื่นๆ"
+
+    # เบิกเงิน
+    if "เบิก" in clean_text:
+        type_name = "เบิกเงิน"
+        category = "เบิกเงิน"
+
+    # คืนเงิน
+    elif "คืนเงิน" in clean_text or "คืนตัง" in clean_text:
+        type_name = "คืนเงิน"
+        category = "คืนเงิน"
+
+    # ค่าช่าง / ค่าแรง
+    elif "ค่าช่าง" in clean_text or "ค่าแรง" in clean_text:
+        type_name = "ค่าใช้จ่าย"
+        category = "ค่าแรง"
+
+    # น้ำมัน
+    elif "น้ำมัน" in clean_text:
+        type_name = "ค่าใช้จ่าย"
+        category = "ค่าน้ำมัน"
+
+    # วัสดุ / ซื้อของ
+    elif (
+        "ซื้อ" in clean_text
+        or "วัสดุ" in clean_text
+        or "ปูน" in clean_text
+        or "เหล็ก" in clean_text
+        or "อุปกรณ์" in clean_text
+    ):
+        type_name = "ค่าใช้จ่าย"
+        category = "ค่าวัสดุ"
+
+    return {
+        "type": type_name,
+        "category": category,
+        "amount": amount
+    }
+
+
 @handler.add(MessageEvent, message=TextMessageContent)
 def handle_message(event):
 
@@ -97,8 +166,7 @@ def handle_message(event):
     group_id = getattr(event.source, "group_id", "") or ""
 
     # ==========================================
-    # ตั้งชื่อห้อง/ไซต์
-    # ตัวอย่าง: ตั้งชื่อไซต์ นครนายก
+    # ตั้งชื่อไซต์
     # ==========================================
     if text.startswith("ตั้งชื่อไซต์"):
 
@@ -139,10 +207,8 @@ def handle_message(event):
         if result.get("success"):
             reply_line(
                 event,
-                f"✅ ลงทะเบียนห้องเรียบร้อยครับ\n\n"
-                f"🏗️ ไซต์งาน: {site_name}\n\n"
-                f"จากนี้ข้อมูลในห้องนี้จะถูกบันทึกเป็น "
-                f"“{site_name}” อัตโนมัติครับ"
+                f"✅ ลงทะเบียนห้องเรียบร้อยครับ\n"
+                f"🏗️ ไซต์งาน: {site_name}"
             )
         else:
             reply_line(
@@ -153,8 +219,7 @@ def handle_message(event):
         return
 
     # ==========================================
-    # ข้อความทั่วไป
-    # ค้นชื่อไซต์จาก Group ID อัตโนมัติ
+    # หาไซต์จากห้อง LINE
     # ==========================================
     site_name = get_site_name(group_id)
 
@@ -167,16 +232,21 @@ def handle_message(event):
         )
         return
 
+    # ==========================================
+    # วิเคราะห์ข้อความ
+    # ==========================================
+    info = analyze_message(text)
+
     result = send_to_sheet({
-        "type": "ข้อความ",
+        "type": info["type"],
         "project": site_name,
         "sender": "",
         "shop": "",
-        "category": "",
+        "category": info["category"],
         "detail": text,
-        "amount": "",
+        "amount": info["amount"],
         "document_no": "",
-        "status": "รับข้อมูลแล้ว",
+        "status": "บันทึกแล้ว",
         "receipt_link": "",
         "note": "",
         "line_user_id": user_id,
@@ -186,15 +256,25 @@ def handle_message(event):
 
     if result.get("success"):
 
-        if site_name:
+        amount = info["amount"]
+
+        if amount != "":
+            amount_display = f"{amount:,.2f}"
+
             reply_text = (
-                f"✅ บันทึกข้อมูลแล้วครับ\n"
-                f"🏗️ ไซต์: {site_name}\n\n"
+                f"✅ บันทึกเรียบร้อยครับ\n"
+                f"🏗️ ไซต์: {site_name}\n"
+                f"📌 ประเภท: {info['type']}\n"
+                f"📂 หมวด: {info['category']}\n"
+                f"💰 จำนวนเงิน: {amount_display} บาท\n\n"
                 f"📝 {text}"
             )
+
         else:
             reply_text = (
-                "✅ บันทึกข้อมูลแล้วครับ\n\n"
+                f"✅ บันทึกข้อมูลแล้วครับ\n"
+                f"🏗️ ไซต์: {site_name}\n"
+                f"📌 ประเภท: {info['type']}\n\n"
                 f"📝 {text}"
             )
 
