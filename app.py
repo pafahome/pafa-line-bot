@@ -395,6 +395,7 @@ def handle_image(event):
 
         if result.get("success"):
             file_url = result.get("file_url", "")
+            ocr_text = result.get("ocr_text", "")
 
             # เก็บไว้รอข้อความรายการถัดไป
             pending_receipts[group_id] = {
@@ -405,12 +406,11 @@ def handle_image(event):
             }
 
             reply_line(
-                event,
-                f"📸 รับรูปบิลเรียบร้อยครับ\n"
-                f"🏗️ ไซต์: {site_name}\n\n"
-                f"กรุณาพิมพ์รายการและยอดเงินต่อได้เลยครับ\n"
-                f"ตัวอย่าง: ปูน 4850",
-            )
+    event,
+    f"📸 รับรูปบิลเรียบร้อยครับ\n"
+    f"🏗️ ไซต์: {site_name}\n\n"
+    f"🔍 ข้อความที่อ่านจากบิล:\n{ocr_text}"
+)
 
         else:
             error_detail = result.get(
