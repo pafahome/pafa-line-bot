@@ -50,11 +50,42 @@ def send_to_sheet(data):
         )
 
         print("Google Sheet:", response.status_code, response.text)
-        return True
+
+        try:
+            return response.json()
+        except Exception:
+            return {"success": False}
 
     except Exception as e:
         print("Google Sheet error:", str(e))
-        return False
+        return {"success": False}
+
+
+def get_site_name(group_id):
+    if not group_id:
+        return ""
+
+    result = send_to_sheet({
+        "action": "get_site",
+        "line_group_id": group_id
+    })
+
+    if result.get("success"):
+        return result.get("site_name", "")
+
+    return ""
+
+
+def reply_line(event, text):
+    with ApiClient(configuration) as api_client:
+        line_bot_api = MessagingApi(api_client)
+
+        line_bot_api.reply_message(
+            ReplyMessageRequest(
+                reply_token=event.reply_token,
+                messages=[TextMessage(text=text)]
+            )
+        )
 
 
 @handler.add(MessageEvent, message=TextMessageContent)
@@ -65,98 +96,112 @@ def handle_message(event):
     user_id = getattr(event.source, "user_id", "") or ""
     group_id = getattr(event.source, "group_id", "") or ""
 
-    # -------------------------
-    # คำสั่งตั้งชื่อไซต์
+    # ==========================================
+    # ตั้งชื่อห้อง/ไซต์
     # ตัวอย่าง: ตั้งชื่อไซต์ นครนายก
-    # -------------------------
-
+    # ==========================================
     if text.startswith("ตั้งชื่อไซต์"):
 
         if not group_id:
-            reply_text = "⚠️ คำสั่งนี้ต้องใช้ในกลุ่ม LINE ครับ"
+            reply_line(
+                event,
+                "⚠️ คำสั่งตั้งชื่อไซต์ต้องใช้ภายในกลุ่ม LINE ครับ"
+            )
+            return
 
-        else:
-            site_name = text.replace("ตั้งชื่อไซต์", "", 1).strip()
+        site_name = text.replace("ตั้งชื่อไซต์", "", 1).strip()
 
-            if not site_name:
-                reply_text = (
-                    "กรุณาใส่ชื่อไซต์ด้วยครับ\n"
-                    "ตัวอย่าง: ตั้งชื่อไซต์ นครนายก"
-                )
+        if not site_name:
+            reply_line(
+                event,
+                "กรุณาระบุชื่อไซต์ครับ\n"
+                "ตัวอย่าง: ตั้งชื่อไซต์ นครนายก"
+            )
+            return
 
-            else:
-                data = {
-                    "type": "ตั้งชื่อไซต์",
-                    "project": site_name,
-                    "sender": "",
-                    "shop": "",
-                    "category": "ระบบ",
-                    "detail": "ลงทะเบียนห้อง LINE",
-                    "amount": "",
-                    "document_no": "",
-                    "status": "ใช้งาน",
-                    "receipt_link": "",
-                    "note": "ห้องนี้ถูกกำหนดเป็นไซต์ " + site_name,
-                    "line_user_id": user_id,
-                    "line_group_id": group_id,
-                    "record_id": ""
-                }
-
-                saved = send_to_sheet(data)
-
-                if saved:
-                    reply_text = (
-                        f"✅ ลงทะเบียนห้องนี้เรียบร้อยครับ\n\n"
-                        f"🏗️ ไซต์งาน: {site_name}\n\n"
-                        "จากนี้ข้อมูลที่ส่งในห้องนี้ "
-                        "จะถูกจัดเก็บเป็นข้อมูลของไซต์นี้ครับ"
-                    )
-                else:
-                    reply_text = "⚠️ ลงทะเบียนไซต์ไม่สำเร็จ กรุณาลองใหม่ครับ"
-
-    # -------------------------
-    # ข้อความทั่วไป
-    # -------------------------
-
-    else:
-
-        data = {
-            "type": "ข้อความ",
-            "project": "",
+        result = send_to_sheet({
+            "type": "ตั้งชื่อไซต์",
+            "project": site_name,
             "sender": "",
             "shop": "",
-            "category": "",
-            "detail": text,
+            "category": "ระบบ",
+            "detail": "ลงทะเบียนห้อง LINE",
             "amount": "",
             "document_no": "",
-            "status": "รับข้อมูลแล้ว",
+            "status": "ใช้งาน",
             "receipt_link": "",
-            "note": "",
+            "note": "ห้องนี้ถูกกำหนดเป็นไซต์ " + site_name,
             "line_user_id": user_id,
             "line_group_id": group_id,
             "record_id": ""
-        }
+        })
 
-        saved = send_to_sheet(data)
+        if result.get("success"):
+            reply_line(
+                event,
+                f"✅ ลงทะเบียนห้องเรียบร้อยครับ\n\n"
+                f"🏗️ ไซต์งาน: {site_name}\n\n"
+                f"จากนี้ข้อมูลในห้องนี้จะถูกบันทึกเป็น "
+                f"“{site_name}” อัตโนมัติครับ"
+            )
+        else:
+            reply_line(
+                event,
+                "⚠️ ลงทะเบียนไซต์ไม่สำเร็จ กรุณาลองใหม่ครับ"
+            )
 
-        if saved:
+        return
+
+    # ==========================================
+    # ข้อความทั่วไป
+    # ค้นชื่อไซต์จาก Group ID อัตโนมัติ
+    # ==========================================
+    site_name = get_site_name(group_id)
+
+    if group_id and not site_name:
+        reply_line(
+            event,
+            "⚠️ ห้องนี้ยังไม่ได้ลงทะเบียนไซต์ครับ\n\n"
+            "กรุณาพิมพ์ เช่น\n"
+            "ตั้งชื่อไซต์ นครนายก"
+        )
+        return
+
+    result = send_to_sheet({
+        "type": "ข้อความ",
+        "project": site_name,
+        "sender": "",
+        "shop": "",
+        "category": "",
+        "detail": text,
+        "amount": "",
+        "document_no": "",
+        "status": "รับข้อมูลแล้ว",
+        "receipt_link": "",
+        "note": "",
+        "line_user_id": user_id,
+        "line_group_id": group_id,
+        "record_id": ""
+    })
+
+    if result.get("success"):
+
+        if site_name:
             reply_text = (
-                "✅ รับข้อมูลแล้วครับ\n\n"
+                f"✅ บันทึกข้อมูลแล้วครับ\n"
+                f"🏗️ ไซต์: {site_name}\n\n"
                 f"📝 {text}"
             )
         else:
-            reply_text = "⚠️ รับข้อความแล้ว แต่บันทึกข้อมูลไม่สำเร็จครับ"
-
-    # ตอบกลับ LINE
-    with ApiClient(configuration) as api_client:
-        line_bot_api = MessagingApi(api_client)
-
-        line_bot_api.reply_message(
-            ReplyMessageRequest(
-                reply_token=event.reply_token,
-                messages=[TextMessage(text=reply_text)]
+            reply_text = (
+                "✅ บันทึกข้อมูลแล้วครับ\n\n"
+                f"📝 {text}"
             )
-        )
+
+    else:
+        reply_text = "⚠️ รับข้อความแล้ว แต่บันทึกข้อมูลไม่สำเร็จครับ"
+
+    reply_line(event, reply_text)
 
 
 if __name__ == "__main__":
