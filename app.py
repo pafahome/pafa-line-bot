@@ -401,7 +401,7 @@ def handle_image(event):
     ocr_text
 )
 
-amount = amount_match.group(1) if amount_match else ""
+        amount = amount_match.group(1) if amount_match else ""
 
             # เก็บไว้รอข้อความรายการถัดไป
             pending_receipts[group_id] = {
