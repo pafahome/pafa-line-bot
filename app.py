@@ -1,14 +1,14 @@
 import os
 import re
+import base64
 import requests
 from flask import Flask, request, abort
 
-from linebot.v3 import WebhookHandler
-from linebot.v3.exceptions import InvalidSignatureError
 from linebot.v3.messaging import (
     Configuration,
     ApiClient,
     MessagingApi,
+    MessagingApiBlob,
     ReplyMessageRequest,
     TextMessage
 )
@@ -351,7 +351,7 @@ def handle_image(event):
     user_id = getattr(event.source, "user_id", "") or ""
     group_id = getattr(event.source, "group_id", "") or ""
 
-    # หาไซต์จากห้อง LINE อัตโนมัติ
+    # หาไซต์จากห้อง LINE
     site_name = get_site_name(group_id)
 
     if group_id and not site_name:
@@ -361,12 +361,84 @@ def handle_image(event):
         )
         return
 
-    reply_line(
-        event,
-        f"📸 รับรูปภาพเรียบร้อยครับ\n"
-        f"🏗️ ไซต์: {site_name}\n\n"
-        f"กำลังเตรียมระบบจัดเก็บรูปบิลครับ"
-    )
+    try:
+        # ==========================================
+        # ดาวน์โหลดรูปจริงจาก LINE
+        # ==========================================
+        with ApiClient(configuration) as api_client:
+            blob_api = MessagingApiBlob(api_client)
+
+            image_content = blob_api.get_message_content(
+                event.message.id
+            )
+
+        # ==========================================
+        # แปลงรูปเป็น Base64
+        # ==========================================
+        image_base64 = base64.b64encode(
+            image_content
+        ).decode("utf-8")
+
+        file_name = (
+            f"{site_name}_"
+            f"{event.message.id}.jpg"
+        )
+
+        # ==========================================
+        # ส่งรูปไป Apps Script → Google Drive
+        # ==========================================
+        result = send_to_sheet({
+            "action": "upload_receipt",
+            "project": site_name,
+            "file_name": file_name,
+            "content_type": "image/jpeg",
+            "image_base64": image_base64,
+            "line_user_id": user_id,
+            "line_group_id": group_id
+        })
+
+        if result.get("success"):
+
+            file_url = result.get("file_url", "")
+
+            # บันทึกรายการรูปลง Google Sheet
+            save_result = send_to_sheet({
+                "type": "รูปบิล",
+                "project": site_name,
+                "sender": "",
+                "shop": "",
+                "category": "หลักฐาน",
+                "detail": "รับรูปบิลจาก LINE",
+                "amount": "",
+                "document_no": "",
+                "status": "มีหลักฐาน",
+                "receipt_link": file_url,
+                "note": "",
+                "line_user_id": user_id,
+                "line_group_id": group_id,
+                "record_id": event.message.id
+            })
+
+            reply_line(
+                event,
+                f"✅ เก็บรูปบิลเรียบร้อยครับ\n"
+                f"🏗️ ไซต์: {site_name}\n"
+                f"📸 บันทึกรูปเข้า Google Drive แล้ว"
+            )
+
+        else:
+            reply_line(
+                event,
+                "⚠️ รับรูปแล้ว แต่บันทึกเข้า Google Drive ไม่สำเร็จครับ"
+            )
+
+    except Exception as e:
+        print("Image error:", str(e))
+
+        reply_line(
+            event,
+            "⚠️ รับรูปแล้ว แต่เกิดข้อผิดพลาดระหว่างจัดเก็บครับ"
+        )
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
