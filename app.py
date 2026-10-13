@@ -306,7 +306,7 @@ def handle_message(event):
         "record_id": ""
     })
 
-        if result.get("success"):
+    if result.get("success"):
 
         amount = info["amount"]
 
