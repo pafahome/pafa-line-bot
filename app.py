@@ -280,6 +280,7 @@ def handle_message(event):
         receipt_link = pending.get("file_url", "")
         record_id = pending.get("record_id", "")
         status = "มีหลักฐาน"
+        info["amount"] = pending.get("amount") or info["amount"]
 
     # ==========================================
     # บันทึกรายการลง Sheet
