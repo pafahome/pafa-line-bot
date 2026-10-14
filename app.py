@@ -491,7 +491,7 @@ def handle_image(event):
                 f"🔍 ข้อความที่อ่านจากบิล:\n{ocr_text}"
             )
 
-                else:
+        else:
             error_detail = result.get(
                 "error",
                 "ไม่ทราบสาเหตุ",
