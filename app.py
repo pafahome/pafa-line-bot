@@ -398,13 +398,17 @@ def handle_image(event):
             file_url = result.get("file_url", "")
             ocr_text = result.get("ocr_text", "")
 
+            amount = ""
+
+            # หาเลขจำนวนเงินหลังคำว่า "จำนวนเงิน"
             amount_match = re.search(
-                r"จำนวนเงิน[\s\S]*?([\d,]+\.\d{2})\s*THB",
+                r"จำนวนเงิน[\s\S]{0,40}?([\d,]+\.\d{2})",
                 ocr_text,
                 re.IGNORECASE
             )
-
-            amount = amount_match.group(1) if amount_match else ""
+            
+            if amount_match:
+                amount = amount_match.group(1)
 
             pending_receipts[group_id] = {
                 "file_url": file_url,
