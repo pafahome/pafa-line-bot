@@ -272,7 +272,68 @@ def handle_message(event):
                 event,
                 "⚠️ ไม่สามารถดึงยอดเบิกช่างได้ครับ"
             )
+                # ==========================================
+    # สรุปยอด เบิก / จ่าย / รวม ของไซต์นี้
+    # ==========================================
+    if text in ["ยอดเบิก", "ยอดจ่าย", "ยอดรวม", "ยอดจ่ายทั้งหมด"]:
+        result = send_to_sheet({
+            "action": "get_expense_summary",
+            "line_group_id": group_id,
+        })
 
+        if not result.get("success"):
+            reply_line(
+                event,
+                "⚠️ ไม่สามารถดึงข้อมูลสรุปยอดได้ครับ"
+            )
+            return
+
+        withdrawal_total = float(
+            result.get("withdrawal_total", 0) or 0
+        )
+        withdrawal_count = int(
+            result.get("withdrawal_count", 0) or 0
+        )
+
+        payment_total = float(
+            result.get("payment_total", 0) or 0
+        )
+        payment_count = int(
+            result.get("payment_count", 0) or 0
+        )
+
+        grand_total = float(
+            result.get("grand_total", 0) or 0
+        )
+
+        if text == "ยอดเบิก":
+            reply_text = (
+                f"📊 ยอดเบิก\n"
+                f"🏗️ ไซต์: {site_name}\n"
+                f"💰 รวม: {withdrawal_total:,.2f} บาท\n"
+                f"🧾 {withdrawal_count} รายการ"
+            )
+
+        elif text in ["ยอดจ่าย", "ยอดจ่ายทั้งหมด"]:
+            reply_text = (
+                f"📊 ยอดจ่าย\n"
+                f"🏗️ ไซต์: {site_name}\n"
+                f"💰 รวม: {payment_total:,.2f} บาท\n"
+                f"🧾 {payment_count} รายการ"
+            )
+
+        else:
+            reply_text = (
+                f"📊 สรุปยอดทั้งหมด\n"
+                f"🏗️ ไซต์: {site_name}\n\n"
+                f"👷 ยอดเบิก: {withdrawal_total:,.2f} บาท\n"
+                f"🛒 ยอดจ่าย: {payment_total:,.2f} บาท\n"
+                f"━━━━━━━━━━\n"
+                f"💰 รวมเงินออก: {grand_total:,.2f} บาท"
+            )
+
+        reply_line(event, reply_text)
+        
         return
     info = analyze_message(text)
     if info is None:
