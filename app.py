@@ -401,11 +401,11 @@ def handle_image(event):
             r"จำนวนเงิน[\s\S]*?(\d[\d,]*\.\d{2})\s*THB",
             ocr_text,
             re.IGNORECASE
-            )
+        )
 
-            amount = amount_match.group(1) if amount_match else ""
+        amount = amount_match.group(1) if amount_match else ""
 
-            pending_receipts[group_id] = {
+        pending_receipts[group_id] = {
                 "file_url": file_url,
                 "record_id": event.message.id,
                 "user_id": user_id,
