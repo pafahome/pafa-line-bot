@@ -447,12 +447,47 @@ def handle_image(event):
                 "ocr_text": ocr_text,
                 "amount": amount,
             }
+        # ถ้า OCR อ่านยอดเงินได้ ให้เตรียมบันทึกลง Sheet อัตโนมัติ
+                # ถ้า OCR อ่านยอดเงินได้ ให้บันทึกลง Sheet อัตโนมัติ
+        if amount:
+            auto_result = send_to_sheet({
+                "type": "รับเงิน",
+                "project": site_name,
+                "sender": "",
+                "shop": "",
+                "category": "รับเงินลูกค้า",
+                "detail": "รับเงินจากสลิปโอนเงิน",
+                "amount": amount,
+                "document_no": "",
+                "status": "มีหลักฐาน",
+                "receipt_link": file_url,
+                "note": "บันทึกอัตโนมัติจาก OCR",
+                "line_user_id": user_id,
+                "line_group_id": group_id,
+                "record_id": event.message.id,
+            })
 
+            
+        if amount and auto_result.get("success"):
+            reply_line(
+                event,
+                f"✅ บันทึกรายการลง Sheet เรียบร้อยครับ\n"
+                f"🏗️ ไซต์: {site_name}\n"
+                f"💰 รับเงิน: {amount} บาท\n"
+                f"📎 บันทึกหลักฐานแล้วครับ"
+            )
+        elif amount:
+            reply_line(
+                event,
+                f"⚠️ อ่านยอดเงินได้ {amount} บาท\n"
+                f"แต่บันทึกลง Sheet ไม่สำเร็จครับ"
+            )
+        else:
             reply_line(
                 event,
                 f"📸 รับรูปบิลเรียบร้อยครับ\n"
                 f"🏗️ ไซต์: {site_name}\n\n"
-                f"💰 ยอดเงินที่ตรวจพบ: {amount if amount else 'ไม่พบยอดเงิน'} บาท\n\n"
+                f"⚠️ ยังตรวจไม่พบยอดเงิน\n\n"
                 f"🔍 ข้อความที่อ่านจากบิล:\n{ocr_text}"
             )
 
