@@ -129,7 +129,9 @@ def extract_amount(text):
 def analyze_message(text):
     clean_text = text.strip()
     amount = extract_amount(clean_text)
-
+    # ไม่มีจำนวนเงิน = ไม่ใช่รายการบัญชี
+    if amount == "":
+        return None
     type_name = ""
     category = ""
     shop = ""
