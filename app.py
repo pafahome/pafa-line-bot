@@ -130,34 +130,25 @@ def analyze_message(text):
     clean_text = text.strip()
     amount = extract_amount(clean_text)
 
-    type_name = "ค่าใช้จ่าย"
-    category = "อื่นๆ"
+    type_name = ""
+    category = ""
     shop = ""
 
+    # เบิกเงินช่าง
     if "เบิก" in clean_text:
         type_name = "เบิกเงิน"
         category = "เบิกเงิน"
 
-    elif "คืนเงิน" in clean_text or "คืนตัง" in clean_text:
-        type_name = "คืนเงิน"
-        category = "คืนเงิน"
+    # เงินจ่าย / ซื้อของ / ค่าใช้จ่าย
+    elif "จ่าย" in clean_text:
+        type_name = "จ่าย"
+        category = "ค่าใช้จ่าย"
 
-    elif "ค่าช่าง" in clean_text or "ค่าแรง" in clean_text:
-        category = "ค่าแรง"
+    # ข้อความอื่น ไม่ถือเป็นรายการเงิน
+    else:
+        return None
 
-    elif "น้ำมัน" in clean_text:
-        category = "ค่าน้ำมัน"
-
-    elif (
-        "ซื้อ" in clean_text
-        or "วัสดุ" in clean_text
-        or "ปูน" in clean_text
-        or "เหล็ก" in clean_text
-        or "อุปกรณ์" in clean_text
-    ):
-        category = "ค่าวัสดุ"
-
-    # ดึงชื่อร้าน เช่น ซื้อปูน ร้านไทวัสดุ 3500
+    # ดึงชื่อร้าน เช่น จ่าย ร้านไทวัสดุ 3500
     shop_match = re.search(r"ร้าน\s*([^\d]+)", clean_text)
 
     if shop_match:
@@ -171,14 +162,6 @@ def analyze_message(text):
         "",
         detail,
     ).strip()
-
-    # ตัดชื่อร้านออกจากรายละเอียด
-    if shop:
-        detail = re.sub(
-            r"\s*ร้าน\s*" + re.escape(shop) + r"\s*$",
-            "",
-            detail,
-        ).strip()
 
     return {
         "type": type_name,
@@ -292,6 +275,8 @@ def handle_message(event):
 
         return
     info = analyze_message(text)
+    if info is None:
+        return
 
     # ==========================================
     # ถ้ามีรูปบิลรออยู่ ให้จับคู่กับข้อความนี้
@@ -306,7 +291,7 @@ def handle_message(event):
         receipt_link = pending.get("file_url", "")
         record_id = pending.get("record_id", "")
         status = "มีหลักฐาน"
-        info["amount"] = pending.get("amount") or info["amount"]
+        
 
     # ==========================================
     # บันทึกรายการลง Sheet
