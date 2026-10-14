@@ -388,12 +388,12 @@ def handle_image(event):
     if group_id and not site_name:
         reply_line(
             event,
-            "⚠️ ห้องนี้ยังไม่ได้ลงทะเบียนไซต์ครับ",
+            "⚠️ ห้องนี้ยังไม่ได้ลงทะเบียนไซต์ครับ"
         )
         return
 
     try:
-        # ดาวน์โหลดรูปจริงจาก LINE
+        # ดาวน์โหลดรูปจาก LINE
         with ApiClient(configuration) as api_client:
             blob_api = MessagingApiBlob(api_client)
             image_content = blob_api.get_message_content(
@@ -405,11 +405,9 @@ def handle_image(event):
             image_content
         ).decode("utf-8")
 
-        file_name = (
-            f"{site_name}_{event.message.id}.jpg"
-        )
+        file_name = f"{site_name}_{event.message.id}.jpg"
 
-        # ส่งรูปไป Apps Script → Google Drive
+        # เก็บรูปลง Google Drive
         result = send_to_sheet({
             "action": "upload_receipt",
             "project": site_name,
@@ -422,109 +420,34 @@ def handle_image(event):
 
         if result.get("success"):
             file_url = result.get("file_url", "")
-            ocr_text = result.get("ocr_text", "")
 
-            amount = ""
-
-                        # ทำข้อความ OCR ให้ค้นหาง่ายขึ้น
-            normalized_ocr = ocr_text.replace("ํา", "ำ")
-
-            # คำที่มักอยู่ใกล้ยอดเงินจริง
-            amount_keywords = [
-                "จำนวนเงิน",
-                "ยอดเงิน",
-                "ยอดโอน",
-                "ยอดชำระ",
-                "ยอดชําระ",
-                "amount",
-                "total",
-            ]
-
-            # พยายามหายอดจากบริเวณหลังคำสำคัญก่อน
-            for keyword in amount_keywords:
-                keyword_pos = normalized_ocr.lower().find(keyword.lower())
-
-                if keyword_pos != -1:
-                    nearby_text = normalized_ocr[
-                        keyword_pos:keyword_pos + 150
-                    ]
-
-                    money_matches = re.findall(
-                        r"(?<!\d)([\d,]+\.\d{2})(?:\s*(?:บาท|THB))?",
-                        nearby_text,
-                        re.IGNORECASE
-                    )
-
-                    for money in money_matches:
-                        try:
-                            if float(money.replace(",", "")) > 0:
-                                amount = money
-                                break
-                        except ValueError:
-                            pass
-
-                if amount:
-                    break
+            # เก็บรูปไว้รอข้อความ เบิก / จ่าย
             pending_receipts[group_id] = {
                 "file_url": file_url,
                 "record_id": event.message.id,
                 "user_id": user_id,
                 "site_name": site_name,
-                "ocr_text": ocr_text,
-                "amount": amount,
             }
-        # ถ้า OCR อ่านยอดเงินได้ ให้เตรียมบันทึกลง Sheet อัตโนมัติ
-                # ถ้า OCR อ่านยอดเงินได้ ให้บันทึกลง Sheet อัตโนมัติ
-        if amount:
-            auto_result = send_to_sheet({
-                "type": "รับเงิน",
-                "project": site_name,
-                "sender": "",
-                "shop": "",
-                "category": "รับเงินลูกค้า",
-                "detail": "รับเงินจากสลิปโอนเงิน",
-                "amount": amount,
-                "document_no": "",
-                "status": "มีหลักฐาน",
-                "receipt_link": file_url,
-                "note": "บันทึกอัตโนมัติจาก OCR",
-                "line_user_id": user_id,
-                "line_group_id": group_id,
-                "record_id": event.message.id,
-            })
 
-            
-        if amount and auto_result.get("success"):
             reply_line(
                 event,
-                f"✅ บันทึกรายการลง Sheet เรียบร้อยครับ\n"
+                f"📸 รับรูปบิลแล้วครับ\n"
                 f"🏗️ ไซต์: {site_name}\n"
-                f"💰 รับเงิน: {amount} บาท\n"
-                f"📎 บันทึกหลักฐานแล้วครับ"
+                f"⏳ รอข้อความ เบิก หรือ จ่าย"
             )
-        elif amount:
-            reply_line(
-                event,
-                f"⚠️ อ่านยอดเงินได้ {amount} บาท\n"
-                f"แต่บันทึกลง Sheet ไม่สำเร็จครับ"
-            )
+
         else:
             reply_line(
                 event,
-                f"📸 รับรูปบิลเรียบร้อยครับ\n"
-                f"🏗️ ไซต์: {site_name}\n\n"
-                f"⚠️ ยังตรวจไม่พบยอดเงิน\n\n"
-                f"🔍 ข้อความที่อ่านจากบิล:\n{ocr_text}"
+                "⚠️ รับรูปแล้ว แต่บันทึกรูปไม่สำเร็จครับ"
             )
-    
-       
-    
+
     except Exception as e:
         print("Image error:", str(e))
 
         reply_line(
             event,
-            "⚠️ รับรูปแล้ว แต่เกิดข้อผิดพลาดระหว่างจัดเก็บครับ",
+            "⚠️ รับรูปแล้ว แต่เกิดข้อผิดพลาดระหว่างจัดเก็บครับ"
         )
 
 
