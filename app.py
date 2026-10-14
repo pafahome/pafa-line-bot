@@ -491,7 +491,7 @@ def handle_image(event):
                 f"🔍 ข้อความที่อ่านจากบิล:\n{ocr_text}"
             )
 
-        else:
+                else:
             error_detail = result.get(
                 "error",
                 "ไม่ทราบสาเหตุ",
@@ -502,7 +502,7 @@ def handle_image(event):
                 f"⚠️ บันทึก Google Drive ไม่สำเร็จครับ\n\n"
                 f"ERROR: {error_detail}",
             )
-
+    
     except Exception as e:
         print("Image error:", str(e))
 
