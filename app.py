@@ -393,7 +393,7 @@ def handle_image(event):
             "line_group_id": group_id,
         })
 
-               if result.get("success"):
+if result.get("success"):
             file_url = result.get("file_url", "")
             ocr_text = result.get("ocr_text", "")
 
