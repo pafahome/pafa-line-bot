@@ -264,7 +264,33 @@ def handle_message(event):
             "ตั้งชื่อไซต์ นครนายก",
         )
         return
+    # ==========================================
+    # ดูยอดเบิกช่างของไซต์นี้
+    # ==========================================
+    if text == "ยอดเบิกช่าง":
+        result = send_to_sheet({
+            "action": "get_worker_withdrawal_total",
+            "line_group_id": group_id,
+        })
 
+        if result.get("success"):
+            total = float(result.get("total", 0) or 0)
+            count = int(result.get("count", 0) or 0)
+
+            reply_line(
+                event,
+                f"📊 ยอดเบิกช่าง\n"
+                f"🏗️ ไซต์: {site_name}\n"
+                f"💰 ยอดเบิกสะสม: {total:,.2f} บาท\n"
+                f"🧾 ทั้งหมด: {count} รายการ"
+            )
+        else:
+            reply_line(
+                event,
+                "⚠️ ไม่สามารถดึงยอดเบิกช่างได้ครับ"
+            )
+
+        return
     info = analyze_message(text)
 
     # ==========================================
