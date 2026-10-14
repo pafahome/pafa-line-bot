@@ -137,12 +137,12 @@ def analyze_message(text):
     shop = ""
 
     # เบิกเงินช่าง
-    if "เบิก" in clean_text:
+    if "เบิกเงินจำนวน" in clean_text:
         type_name = "เบิกเงิน"
         category = "เบิกเงิน"
 
     # เงินจ่าย / ซื้อของ / ค่าใช้จ่าย
-    elif "จ่าย" in clean_text:
+    elif "จ่ายเงินจำนวน" in clean_text:
         type_name = "จ่าย"
         category = "ค่าใช้จ่าย"
 
