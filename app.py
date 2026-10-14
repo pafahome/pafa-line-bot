@@ -400,16 +400,45 @@ def handle_image(event):
 
             amount = ""
 
-            # หาเลขจำนวนเงินหลังคำว่า "จำนวนเงิน"
-            amount_match = re.search(
-                r"จำนวนเงิน[\s\S]{0,40}?([\d,]+\.\d{2})",
-                ocr_text,
-                re.IGNORECASE
-            )
-            
-            if amount_match:
-                amount = amount_match.group(1)
+                        # ทำข้อความ OCR ให้ค้นหาง่ายขึ้น
+            normalized_ocr = ocr_text.replace("ํา", "ำ")
 
+            # คำที่มักอยู่ใกล้ยอดเงินจริง
+            amount_keywords = [
+                "จำนวนเงิน",
+                "ยอดเงิน",
+                "ยอดโอน",
+                "ยอดชำระ",
+                "ยอดชําระ",
+                "amount",
+                "total",
+            ]
+
+            # พยายามหายอดจากบริเวณหลังคำสำคัญก่อน
+            for keyword in amount_keywords:
+                keyword_pos = normalized_ocr.lower().find(keyword.lower())
+
+                if keyword_pos != -1:
+                    nearby_text = normalized_ocr[
+                        keyword_pos:keyword_pos + 150
+                    ]
+
+                    money_matches = re.findall(
+                        r"(?<!\d)([\d,]+\.\d{2})(?:\s*(?:บาท|THB))?",
+                        nearby_text,
+                        re.IGNORECASE
+                    )
+
+                    for money in money_matches:
+                        try:
+                            if float(money.replace(",", "")) > 0:
+                                amount = money
+                                break
+                        except ValueError:
+                            pass
+
+                if amount:
+                    break
             pending_receipts[group_id] = {
                 "file_url": file_url,
                 "record_id": event.message.id,
